@@ -9,7 +9,10 @@ module.exports = function (grunt) {
     var path = require('path'),
         fs = require('fs'),
         vm = require('vm'),
-        gruntIO = function (currentPath, destPath, basePath, compSetting, outputOne) {
+        gruntIO = function (currentPath, destPath, basePath, compSetting, outputOne, dropNodeModules) {
+			if(dropNodeModules)
+				grunt.verbose.writeln('dropping node_modules from `require`')
+
             var createdFiles = [];
             basePath = basePath || ".";
 
@@ -76,8 +79,14 @@ module.exports = function (grunt) {
                                 writeFile = writeFile.substr(g.length);
                                 writeFile = path.join(currentPath, destPath ? destPath.toString() : '', writeFile);
                             }
-                            grunt.file.write(writeFile, code);
-                            created.dest = writeFile;
+
+							if(dropNodeModules) {
+								grunt.file.write(writeFile, code.replace(/require\('node_modules\//g,
+																		 'require(\''));
+							} else {
+								grunt.file.write(writeFile, code);
+                            }
+							created.dest = writeFile;
                             createdFiles.push(created);
                         }
                     }
@@ -220,7 +229,7 @@ module.exports = function (grunt) {
         vm.runInThisContext(code, typeScriptPath);
 
         var setting = new TypeScript.CompilationSettings();
-        var io = gruntIO(currentPath, destPath, basePath, setting, outputOne);
+        var io = gruntIO(currentPath, destPath, basePath, setting, outputOne, options.node_modules);
         var env = new TypeScript.CompilationEnvironment(setting, io);
         var resolver = new TypeScript.CodeResolver(env);
 
